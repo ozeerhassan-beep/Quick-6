@@ -1,0 +1,44 @@
+# Firebase Data Connect Schema for Catalog Manager (Project: shopping-ece00)
+
+type Product @table {
+  id: UUID! @default(expr: "uuidV4()")
+  name: String!
+  category: String!
+  brand: String!
+  unit: String!
+  price: Float!
+  cost: Float!
+  catalogType: String! # DREAMPRICE, INTERMART, SUPER_U, WINNERS, etc.
+  createdAt: Timestamp! @default(expr: "requestTime()")
+}
+
+type CartItem @table {
+  id: UUID! @default(expr: "uuidV4()")
+  userEmail: String!
+  product: Product!
+  quantity: Int!
+  unitPrice: Float!
+  unitCost: Float!
+  createdAt: Timestamp! @default(expr: "requestTime()")
+  updatedAt: Timestamp! @default(expr: "requestTime()")
+}
+
+type Order @table {
+  id: UUID! @default(expr: "uuidV4()")
+  userEmail: String!
+  totalAmount: Float!
+  totalProfit: Float!
+  itemCount: Int!
+  status: String! # PENDING, CONFIRMED, DELIVERED
+  createdAt: Timestamp! @default(expr: "requestTime()")
+}
+
+type OrderItem @table {
+  id: UUID! @default(expr: "uuidV4()")
+  order: Order!
+  product: Product!
+  productName: String!
+  quantity: Int!
+  unitPrice: Float!
+  unitCost: Float!
+}

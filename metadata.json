@@ -1,0 +1,8 @@
+{
+  "name": "Kwic-Kart",
+  "description": "Smart supermarket comparison catalog & Firebase real-time data sync pipeline",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

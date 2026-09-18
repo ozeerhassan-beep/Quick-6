@@ -1,0 +1,64 @@
+# GraphQL Queries & Mutations for Catalog Manager
+
+# Get all products by catalog
+query ListProductsByCatalog($catalogType: String!) @auth(level: PUBLIC) {
+  products(where: { catalogType: { eq: $catalogType } }) {
+    id
+    name
+    category
+    brand
+    unit
+    price
+    cost
+    catalogType
+  }
+}
+
+# Get user's cart items
+query GetUserCart($userEmail: String!) @auth(level: USER) {
+  cartItems(where: { userEmail: { eq: $userEmail } }) {
+    id
+    quantity
+    unitPrice
+    unitCost
+    product {
+      id
+      name
+      category
+      catalogType
+      unit
+    }
+  }
+}
+
+# Add or update item in cart
+mutation UpsertCartItem($userEmail: String!, $productId: UUID!, $quantity: Int!, $unitPrice: Float!, $unitCost: Float!) @auth(level: USER) {
+  cartItem_upsert(
+    data: {
+      userEmail: $userEmail
+      product: { id: $productId }
+      quantity: $quantity
+      unitPrice: $unitPrice
+      unitCost: $unitCost
+    }
+  ) {
+    id
+    quantity
+  }
+}
+
+# Create Order
+mutation CreateOrder($userEmail: String!, $totalAmount: Float!, $totalProfit: Float!, $itemCount: Int!, $status: String!) @auth(level: USER) {
+  order_insert(
+    data: {
+      userEmail: $userEmail
+      totalAmount: $totalAmount
+      totalProfit: $totalProfit
+      itemCount: $itemCount
+      status: $status
+    }
+  ) {
+    id
+    createdAt
+  }
+}

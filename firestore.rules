@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.isAdmin == true ||
+        request.auth.token.admin == true ||
+        request.auth.token.email == "admin@kwickart.mu" ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userRole == "ADMIN"
+      );
+    }
+
+    function getActiveDeviceId(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.activeDeviceId;
+    }
+
+    // User document binding rule: Only users with 'isAdmin' claim can update 'subscriptionTier' / 'userTier' / 'isAdmin'
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        request.auth.token.email == resource.data.userEmail || 
+        request.auth.token.email == resource.data.email || 
+        isAdmin()
+      );
+      // Allow initial profile creation by authenticated account owner
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      // Allow update if caller has admin claim, OR owner updating non-restricted profile fields only
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          isOwner(userId) && 
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriptionTier', 'userTier', 'isAdmin', 'userRole'])
+        )
+      );
+      allow delete: if isAdmin() || isOwner(userId);
+    }
+
+    // Protected user data collection enforcing activeDeviceId
+    match /user_data/{docId} {
+      allow read, write: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.deviceId == getActiveDeviceId(request.auth.uid);
+    }
+
+    // User settings subcollection
+    match /users/{userId}/settings/{docId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Global App Settings
+    match /app_settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Server files catalog
+    match /server_files/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Product items
+    match /products/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Carts rules (personal shopping lists)
+    match /carts/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // Orders rules
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userUid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Collaborative shopping lists / carts
+    match /collaborative_carts/{cartId} {
+      allow read, write: if isAuthenticated() && (
+        resource == null || 
+        resource.data.ownerId == request.auth.uid ||
+        (resource.data.sharedWith != null && request.auth.uid in resource.data.sharedWith) ||
+        request.resource.data.ownerId == request.auth.uid ||
+        (request.resource.data.sharedWith != null && request.auth.uid in request.resource.data.sharedWith)
+      );
+    }
+  }
+}
